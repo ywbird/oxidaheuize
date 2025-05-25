@@ -1,0 +1,14 @@
+[package]
+name = "oxidaheuize"
+version = "0.1.0"
+edition = "2024"
+default-run = "oxidaheuize"
+
+[dependencies]
+clap = { version = "4.5.38", features = ["derive"] }
+color-eyre = "0.6.4"
+crossterm = "0.29.0"
+ratatui = { version = "0.29.0", features = ["all-widgets"] }
+
+[[bin]]
+name = "debugger"
