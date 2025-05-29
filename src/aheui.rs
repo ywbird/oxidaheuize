@@ -10,13 +10,14 @@ pub struct Aheui {
     pub dir: (i32, i32),
     pub prev: (i32, i32),
     pub stacks: [VecDeque<i32>; 27],
-    result: String,
+    pub result: String,
     pub sel: usize,
     pub src_map: Vec<Vec<KChar>>,
     pub src_mat: (usize, usize),
     pub step: usize,
     pub ended: bool,
-    pub verbose: bool,
+    use_debugger: bool,
+    verbose: bool,
 }
 
 #[derive(Debug)]
@@ -54,12 +55,17 @@ impl Aheui {
             src_map,
             src_mat: (max_line, src.lines().count()),
             dir: (0, 1),
+            verbose: false,
+            use_debugger: false,
             ended: false,
             ..Default::default()
         }
     }
 
     pub fn next(&mut self) {
+        if self.ended {
+            panic!("Cannot process after ended!");
+        }
         self.step += 1;
         let curr = *self.current();
 
@@ -151,18 +157,21 @@ impl Aheui {
                         match curr.2 {
                             ('ㅇ', ' ') => {
                                 if self.verbose {
-                                    println!("Print number: {}", num);
+                                    self.print_debug(format!("Print number: {} \n", num));
                                 } else {
-                                    print!("{}", num);
+                                    self.output(num.to_string());
                                 }
                                 self.result.push_str(num.to_string().as_str());
                             }
                             ('ㅎ', ' ') => {
                                 let chr = char::from_u32(num as u32).unwrap_or(' ');
                                 if self.verbose {
-                                    println!("Print character: {:?}({})", chr, num);
+                                    self.print_debug(format!(
+                                        "Print character: {:?}({})",
+                                        chr, num
+                                    ));
                                 } else {
-                                    print!("{}", chr);
+                                    self.output(chr.to_string());
                                 }
                                 self.result.push(chr);
                             }
@@ -175,7 +184,8 @@ impl Aheui {
                     match curr.2 {
                         ('ㅇ', ' ') => {
                             let mut line = String::new();
-                            io::stdin().read_line(&mut line).unwrap();
+
+                            self.request_input(RequestType::Number, &mut line);
 
                             self.insert_value(
                                 self.sel,
@@ -186,7 +196,8 @@ impl Aheui {
                         }
                         ('ㅎ', ' ') => {
                             let mut line = String::new();
-                            io::stdin().read_line(&mut line).unwrap();
+
+                            self.request_input(RequestType::Number, &mut line);
 
                             for chr in line.chars() {
                                 self.insert_value(self.sel, chr as i32);
@@ -295,7 +306,9 @@ impl Aheui {
             }
         }
 
-        self.print_state();
+        if self.verbose {
+            self.print_state();
+        }
 
         // 이동
         self.prev = self.cursor;
@@ -303,11 +316,11 @@ impl Aheui {
         self.cursor.1 = (self.cursor.1 + self.dir.1).rem_euclid(self.src_mat.1 as i32);
     }
 
-    pub fn check_require(&self, count: usize) -> bool {
+    fn check_require(&self, count: usize) -> bool {
         self.stacks[self.sel].len() >= count
     }
 
-    pub fn get_value(&mut self, sel: usize) -> i32 {
+    fn get_value(&mut self, sel: usize) -> i32 {
         if sel == 21 {
             self.stacks[21].pop_front().unwrap_or(0)
         } else {
@@ -315,12 +328,20 @@ impl Aheui {
         }
     }
 
-    pub fn insert_value(&mut self, sel: usize, val: i32) {
+    fn insert_value(&mut self, sel: usize, val: i32) {
         if sel == 21 {
             self.stacks[21].push_back(val);
         } else {
             self.stacks[sel].push_front(val);
         }
+    }
+
+    pub fn verbose(&mut self, opt: bool) {
+        self.verbose = opt;
+    }
+
+    pub fn debug(&mut self, opt: bool) {
+        self.use_debugger = opt;
     }
 
     pub fn exit(&mut self, code: ExitCode) {
@@ -374,4 +395,28 @@ impl Aheui {
             }
         }
     }
+
+    fn print_debug(&self, text: String) {
+        if !self.use_debugger {
+            print!("{}", text);
+        }
+    }
+
+    fn output(&self, text: String) {
+        if !self.use_debugger {
+            print!("{}", text);
+        }
+    }
+
+    fn request_input(&mut self, request_type: RequestType, line: &mut String) {
+        if self.use_debugger {
+        } else {
+            io::stdin().read_line(line).unwrap();
+        }
+    }
+}
+
+enum RequestType {
+    Number,
+    Char,
 }
