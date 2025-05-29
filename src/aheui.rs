@@ -10,12 +10,19 @@ pub struct Aheui {
     pub dir: (i32, i32),
     pub prev: (i32, i32),
     pub stacks: [VecDeque<i32>; 27],
+    result: String,
     pub sel: usize,
     pub src_map: Vec<Vec<KChar>>,
     pub src_mat: (usize, usize),
     pub step: usize,
     pub ended: bool,
-    pub debug: bool,
+    pub verbose: bool,
+}
+
+#[derive(Debug)]
+pub enum ExitCode {
+    Success(i32),
+    DivideByZero,
 }
 
 impl Aheui {
@@ -70,7 +77,9 @@ impl Aheui {
                     // END
                     let result = self.get_value(self.sel);
 
-                    self.exit(result);
+                    self.exit(ExitCode::Success(result));
+
+                    return;
                 }
                 // ㄷ 묶음 - 셈
                 'ㄷ' => {
@@ -110,6 +119,11 @@ impl Aheui {
                         let num1 = self.get_value(self.sel);
                         let num2 = self.get_value(self.sel);
 
+                        if num2 == 0 {
+                            self.exit(ExitCode::DivideByZero);
+                            return;
+                        }
+
                         self.stacks[self.sel].push_front(num2 / num1);
                         valid = true;
                     }
@@ -119,6 +133,11 @@ impl Aheui {
                     if self.check_require(2) {
                         let num1 = self.get_value(self.sel);
                         let num2 = self.get_value(self.sel);
+
+                        if num2 == 0 {
+                            self.exit(ExitCode::DivideByZero);
+                            return;
+                        }
 
                         self.stacks[self.sel].push_front(num2 % num1);
                         valid = true;
@@ -131,10 +150,21 @@ impl Aheui {
 
                         match curr.2 {
                             ('ㅇ', ' ') => {
-                                print!("{}", num);
+                                if self.verbose {
+                                    println!("Print number: {}", num);
+                                } else {
+                                    print!("{}", num);
+                                }
+                                self.result.push_str(num.to_string().as_str());
                             }
                             ('ㅎ', ' ') => {
-                                print!("{}", char::from_u32(num as u32).unwrap_or(' '));
+                                let chr = char::from_u32(num as u32).unwrap_or(' ');
+                                if self.verbose {
+                                    println!("Print character: {:?}({})", chr, num);
+                                } else {
+                                    print!("{}", chr);
+                                }
+                                self.result.push(chr);
                             }
                             _ => {}
                         }
@@ -265,6 +295,8 @@ impl Aheui {
             }
         }
 
+        self.print_state();
+
         // 이동
         self.prev = self.cursor;
         self.cursor.0 = (self.cursor.0 + self.dir.0).rem_euclid(self.src_mat.0 as i32);
@@ -291,9 +323,26 @@ impl Aheui {
         }
     }
 
-    pub fn exit(&mut self, _code: i32) {
-        // println!("\n{}", code);
+    pub fn exit(&mut self, code: ExitCode) {
+        println!("\n");
+
+        if self.verbose {
+            print!("Final result: {}", self.result);
+        }
+
         self.ended = true;
+        match &code {
+            ExitCode::Success(_) if self.verbose => {
+                println!("Finished, {:?}", code);
+            }
+            ExitCode::DivideByZero => {
+                println!(
+                    "{:?}: divide by 0 at ({}, {})",
+                    code, self.cursor.0, self.cursor.1
+                );
+            }
+            _ => {}
+        }
         // std::process::exit(code);
     }
 
